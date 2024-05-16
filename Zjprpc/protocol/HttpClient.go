@@ -12,11 +12,11 @@ import (
 type HttpClient struct {
 }
 
-func (h *HttpClient) Send(hostname string, port int, invocation common.Invocation) (string, error) {
+func (h *HttpClient) Send(hostname string, port int, invocation common.Invocation) ([]byte, error) {
 	// 将 invocation 转换为 JSON 格式的字节切片
 	requestBody, err := json.Marshal(invocation)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
 	// 构建请求 URL
@@ -25,7 +25,7 @@ func (h *HttpClient) Send(hostname string, port int, invocation common.Invocatio
 	// 创建 HTTP 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
 	// 设置请求头
@@ -35,15 +35,15 @@ func (h *HttpClient) Send(hostname string, port int, invocation common.Invocatio
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
 	// 读取响应体
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
-	return string(responseBody), nil
+	return responseBody, nil
 }
