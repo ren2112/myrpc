@@ -1,24 +1,58 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 )
 
-type Geek struct {
-	A int `tag1:"First Tag" tag2:"Second Tag"`
-	B string
+type Result struct {
+	Values []interface{}  // 返回值
+	Types  []reflect.Type // 返回值类型
 }
 
-// Main function
-func main() {
-	f := Geek{A: 10, B: "Number"}
+type A struct {
+	Name string
+}
 
-	fType := reflect.TypeOf(f)
-	fVal := reflect.New(fType)
-	fmt.Println(fVal, fVal.Elem(), reflect.TypeOf(fVal), reflect.TypeOf(fVal.Elem()))
-	fVal.Elem().Field(0).SetInt(20)
-	fVal.Elem().Field(1).SetString("Number")
-	f2 := fVal.Elem().Interface().(Geek)
-	fmt.Printf("%+v, %d, %s\n", f2, f2.A, f2.B)
+func main() {
+	// 创建一个A类型的实例
+	aInstance := A{"zjp"}
+
+	// 将A的实例转换为interface{}类型并放入切片
+	values := []interface{}{aInstance}
+
+	// 获取A的类型
+	aType := reflect.TypeOf(aInstance)
+
+	// 创建Result实例
+	result := Result{
+		Values: values,                // 正确的[]interface{}类型
+		Types:  []reflect.Type{aType}, // 类型切片，包含A的类型
+	}
+	res, err := json.Marshal(result)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(res))
+	var from Result
+	json.Unmarshal([]byte(res), &from)
+	fmt.Println(from)
+
+	firstValue := from.Values[0]
+	firstValueJSON, err := json.Marshal(firstValue)
+	if err != nil {
+		fmt.Println("Error marshaling first value to JSON:", err)
+		return
+	}
+	fmt.Println("First value as JSON:", string(firstValueJSON))
+
+	// 将JSON字符串反序列化为A类型的结构体实例
+	var aInstance2 A
+	err = json.Unmarshal(firstValueJSON, &aInstance2)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON to A:", err)
+		return
+	}
+	fmt.Printf("Deserialized A instance: %+v\n", aInstance2)
 }

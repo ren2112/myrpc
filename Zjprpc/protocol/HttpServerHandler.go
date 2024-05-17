@@ -55,8 +55,22 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 			fmt.Println("输入类型不支持！")
 			return
 		}
+		inputIJSON, err := json.Marshal(param)
+		if err != nil {
+			fmt.Println("输入类型不支持！")
+			return
+		}
+
+		inputIval := reflect.New(paramType).Elem()
+		ptr := inputIval.Addr().Interface()
+		err = json.Unmarshal(inputIJSON, ptr)
+		if err != nil {
+			fmt.Println("输入类型不支持！")
+			return
+		}
+
 		// 根据参数类型创建 reflect.Value 对象
-		inputs[i] = reflect.ValueOf(param).Convert(paramType)
+		inputs[i] = inputIval
 	}
 
 	// 调用方法并检查返回值
