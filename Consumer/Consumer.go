@@ -6,16 +6,16 @@ import (
 )
 
 func main() {
-	//// 创建 RPC 代理
-	//rpcProxy := proxy.NewRpcProxy()
-	//
-	//// 进行 RPC 调用
-	//result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"})
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return
-	//}
-	//fmt.Println(result)
+	// 创建 RPC 代理
+	rpcProxy := proxy.NewRpcProxy()
+
+	// 进行 RPC 调用
+	result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(result)
 
 	rpcProxy2 := proxy.NewRpcProxy()
 	// 进行 RPC 调用

@@ -44,21 +44,7 @@ func (s *HTTPRegisterServer) handleRegister(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	s.mu.Lock()
-	urls := make([]common.URL, len(s.registry[url.InterfaceName]))
-	copy(urls, s.registry[url.InterfaceName])
-
-	//urls := s.registry[url.InterfaceName]
-	// 向新切片中添加新的 URL
-	newURL := common.URL{
-		InterfaceName: url.InterfaceName,
-		HostName:      url.HostName,
-		Port:          url.Port,
-		LastHeartbeat: url.LastHeartbeat,
-	}
-	urls = append(urls, newURL)
-
-	// 更新注册表中的切片
-	s.registry[url.InterfaceName] = urls
+	s.registry[url.InterfaceName] = append(s.registry[url.InterfaceName], url)
 	s.mu.Unlock()
 	w.WriteHeader(http.StatusOK)
 }
@@ -77,26 +63,40 @@ func (s *HTTPRegisterServer) handleQuery(w http.ResponseWriter, r *http.Request)
 }
 
 // 启动服务中心
-func StartHTTPRegisterServer(addr string) error {
+func StartHTTPRegisterServer(addr string, timeout time.Duration) error {
 	server := NewHTTPRegisterServer()
+	server.timeout = timeout
+
+	// 启动定期检查心跳的 goroutine
 	go server.checkHeartBeat()
-	return http.ListenAndServe(addr, server)
+
+	// 监听并处理 HTTP 请求，一直阻塞直到服务器关闭
+	err := http.ListenAndServe(addr, server)
+	if err != nil {
+		return err
+	}
+
+	// 在服务器关闭后执行其他逻辑
+	fmt.Println("服务器已关闭")
+
+	return nil
 }
 
 // 定期检查心跳
 func (s *HTTPRegisterServer) checkHeartBeat() {
 	for {
-		time.Sleep(s.timeout) //先等待timeout时间
+		time.Sleep(s.timeout) // 先等待 timeout 时间
 		s.mu.Lock()
 		for interfaceName, urls := range s.registry {
+			updatedURLs := make([]common.URL, 0) // 创建一个新的切片，用于保存未失效的服务
 			for i := 0; i < len(urls); i++ {
-				if time.Since(urls[i].LastHeartbeat) > s.timeout {
-					//	移除失效服务
-					urls = append(urls[:i], urls[i+1:]...)
-					i--
+				if time.Since(urls[i].LastHeartbeat) <= s.timeout {
+					// 如果服务未失效，则将其添加到新切片中
+					updatedURLs = append(updatedURLs, urls[i])
 				}
 			}
-			s.registry[interfaceName] = urls
+			// 更新注册表中的切片
+			s.registry[interfaceName] = updatedURLs
 		}
 		s.mu.Unlock()
 	}
@@ -154,6 +154,7 @@ func (s *HTTPRegisterServer) handleHeartbeat(w http.ResponseWriter, r *http.Requ
 			if urls[i].HostName == heartbeatData.URL.HostName &&
 				urls[i].Port == heartbeatData.URL.Port {
 				//更新时间
+				//fmt.Println(heartbeatData.HeartbeatTime)
 				urls[i].LastHeartbeat = heartbeatData.HeartbeatTime
 				break
 			}
