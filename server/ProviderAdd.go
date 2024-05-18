@@ -8,6 +8,7 @@ import (
 	"myRpc/Zjprpc/protocol"
 	"myRpc/Zjprpc/register"
 	"reflect"
+	"time"
 )
 
 func main() {
@@ -19,12 +20,13 @@ func main() {
 	localRegister.Regist(interfaceName, "1.0", &Provider.AddServiceImpl{})
 
 	//注册中心注册：
-	url := common.URL{interfaceName, "localhost", 8083}
+	url := common.URL{interfaceName, "localhost", 8083, time.Now()}
 	err := register.RegisterServiceToHTTP(url, "http://localhost:8082")
+
 	if err != nil {
 		log.Fatalf("Failed to register service: %v", err)
 	}
 
-	httpServer := new(protocol.HttpServer)
+	httpServer := protocol.NewHttpServer(time.Second, "http://localhost:8082", url)
 	httpServer.Start(url.HostName, url.Port)
 }
