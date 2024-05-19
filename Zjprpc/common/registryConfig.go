@@ -1,6 +1,6 @@
 package common
 
-type ClientConfig struct {
+type RegistryConfig struct {
 	IP   string
 	Port int
 	Help bool

@@ -8,12 +8,12 @@ import (
 	"sync"
 )
 
-func threadTest(wg *sync.WaitGroup) {
+func threadTest(wg *sync.WaitGroup, config *common.ClientConfig) {
 	defer wg.Done()
 	rpcProxy := proxy.NewRpcProxy()
 
 	// 进行 RPC 调用
-	result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"})
+	result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"}, config)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -21,25 +21,20 @@ func threadTest(wg *sync.WaitGroup) {
 	fmt.Println(result)
 }
 
-var config *common.ClientConfig
-
 func main() {
+	var config *common.ClientConfig
 	var err error
 	config, err = protocol.ParseClientArgs()
 	if err != nil {
-		fmt.Println("错误：", err)
+		fmt.Println("提示：", err)
 		return
 	}
-
-	fmt.Println("客户端启动参数：")
-	fmt.Println("- 服务端 IP 地址：", config.IP)
-	fmt.Println("- 服务端端口：", config.Port)
 
 	wg := sync.WaitGroup{}
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1) // 在启动每个goroutine前增加WaitGroup计数
-		go threadTest(&wg)
+		go threadTest(&wg, config)
 	}
 	wg.Wait()
 }

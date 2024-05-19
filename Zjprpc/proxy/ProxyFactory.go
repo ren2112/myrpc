@@ -7,6 +7,7 @@ import (
 	"myRpc/Zjprpc/loadbalance"
 	"myRpc/Zjprpc/register"
 	"reflect"
+	"sync"
 	"time"
 
 	"myRpc/Zjprpc/common"
@@ -17,26 +18,33 @@ type RpcProxy struct {
 	client *protocol.HttpClient
 }
 
+var mu sync.RWMutex
 var TypeRegistry map[string]reflect.Type
 
 // NewRpcProxy 创建一个新的 RpcProxy 实例
 func NewRpcProxy() *RpcProxy {
+	mu.Lock()
 	TypeRegistry = make(map[string]reflect.Type)
 	TypeRegistry["int"] = reflect.TypeOf(0)
 	TypeRegistry["string"] = reflect.TypeOf("")
 	TypeRegistry["float64"] = reflect.TypeOf(0.0)
+	mu.Unlock()
 	return &RpcProxy{
 		client: new(protocol.HttpClient),
 	}
 }
 
 func GetTypeByName(name string) (reflect.Type, bool) {
+	mu.RLock()
 	typ, ok := TypeRegistry[name]
+	mu.RUnlock()
 	return typ, ok
 }
 
 func RegisterType(name string, t reflect.Type) {
+	mu.Lock()
 	TypeRegistry[name] = t
+	mu.Unlock()
 }
 
 // 服务发现
@@ -58,7 +66,7 @@ func callServiceSend(p *protocol.HttpClient, hostName string, port int, invocati
 }
 
 // Invoke 进行 RPC 调用
-func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}) ([]interface{}, error) {
+func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}, config *common.ClientConfig) ([]interface{}, error) {
 	// 创建参数类型列表
 	paramTypes := make([]string, len(params))
 	for i, param := range params {
@@ -77,7 +85,7 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 	timeout := 5 * time.Second
 
 	//服务发现(包含服务发现异常)：
-	registerAddr := "http://localhost:8082"
+	registerAddr := fmt.Sprintf("%s:%d", config.IP, config.Port)
 	var urlList []common.URL
 	err := protocol.WithTimeout(func() error {
 		var err error
