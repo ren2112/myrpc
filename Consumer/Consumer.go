@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+
 	// 创建 RPC 代理
 	rpcProxy := proxy.NewRpcProxy()
 
@@ -17,17 +18,17 @@ func main() {
 	}
 	fmt.Println(result)
 
-	rpcProxy2 := proxy.NewRpcProxy()
-	// 进行 RPC 调用
-	result2, err := rpcProxy2.Invoke("AddService", "Add", []interface{}{1, 2})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(result2)
-	if res, ok := result2[0].(int); ok {
-		fmt.Println(res, "is int")
-	}
+	//rpcProxy2 := proxy.NewRpcProxy()
+	//// 进行 RPC 调用
+	//result2, err := rpcProxy2.Invoke("AddService", "Add", []interface{}{1, 2})
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
+	//fmt.Println(result2)
+	//if res, ok := result2[0].(int); ok {
+	//	fmt.Println(res, "is int")
+	//}
 
 	//测试结构体
 	//rpcProxy3 := proxy.NewRpcProxy()

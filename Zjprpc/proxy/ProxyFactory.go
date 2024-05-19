@@ -7,6 +7,7 @@ import (
 	"myRpc/Zjprpc/loadbalance"
 	"myRpc/Zjprpc/register"
 	"reflect"
+	"time"
 
 	"myRpc/Zjprpc/common"
 	"myRpc/Zjprpc/protocol"
@@ -38,6 +39,24 @@ func RegisterType(name string, t reflect.Type) {
 	TypeRegistry[name] = t
 }
 
+// 服务发现
+func callServicecDiscovery(interfaceName string, registerAddr string) ([]common.URL, error) {
+	urlList, err := register.QueryServicesFromHTTP(interfaceName, registerAddr)
+	if err != nil || len(urlList) == 0 {
+		return nil, fmt.Errorf("在接口 %s,没有可以用的服务， 报错: %v", interfaceName, err)
+	}
+	return urlList, nil
+}
+
+// 服务调用
+func callServiceSend(p *protocol.HttpClient, hostName string, port int, invocation common.Invocation) ([]byte, error) {
+	resultStr, err := p.Send(hostName, port, invocation)
+	if err != nil {
+		return []byte{}, err
+	}
+	return resultStr, nil
+}
+
 // Invoke 进行 RPC 调用
 func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}) ([]interface{}, error) {
 	// 创建参数类型列表
@@ -54,11 +73,19 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 		Parameters:     params,
 	}
 
-	//服务发现：
+	//	设置超时时间
+	timeout := 5 * time.Second
+
+	//服务发现(包含服务发现异常)：
 	registerAddr := "http://localhost:8082"
-	urlList, err := register.QueryServicesFromHTTP(interfaceName, registerAddr)
-	if err != nil || len(urlList) == 0 {
-		return nil, fmt.Errorf("在接口 %s,没有可以用的服务， 报错: %v", interfaceName, err)
+	var urlList []common.URL
+	err := protocol.WithTimeout(func() error {
+		var err error
+		urlList, err = callServicecDiscovery(interfaceName, registerAddr)
+		return err
+	}, timeout)
+	if err != nil {
+		return nil, err
 	}
 
 	//负载均衡
@@ -66,12 +93,18 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 
 	// 服务调用
 	resultStr, err := p.client.Send(url.HostName, url.Port, invocation)
+	err = protocol.WithTimeout(func() error {
+		var err error
+		resultStr, err = callServiceSend(p.client, url.HostName, url.Port, invocation)
+		return err
+	}, timeout)
 	var result common.Result
 	err = json.Unmarshal(resultStr, &result)
 	if err != nil {
 		return nil, err
 	}
 
+	//将结果转换为对应类型
 	converted, err := convertResult(result)
 	if err != nil {
 		return nil, err
@@ -79,6 +112,7 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 	return converted, nil
 }
 
+// 将结果转换为对应类型的函数
 func convertResult(result common.Result) ([]interface{}, error) {
 	// 创建一个空的interface{}切片，长度与Values相同
 	converted := make([]interface{}, len(result.Values))

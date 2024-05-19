@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"myRpc/Zjprpc/common"
 	"myRpc/Zjprpc/register"
@@ -18,14 +17,14 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	var invocation common.Invocation
 	requestBody, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, "Failed to read request body", http.StatusBadRequest)
+		http.Error(resp, "读取请求体失败！", http.StatusBadRequest)
 		return
 	}
 
 	//反序列化
 	err = json.Unmarshal([]byte(requestBody), &invocation)
 	if err != nil {
-		http.Error(resp, "Failed to decode JSON data", http.StatusBadRequest)
+		http.Error(resp, "反序列化传参失败!", http.StatusBadRequest)
 		return
 	}
 
@@ -34,7 +33,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	localRegister := register.GetInstance()
 	classImpl := localRegister.Get(interfaceName, "1.0")
 	if classImpl == nil {
-		http.Error(resp, "Class implementation not found", http.StatusBadRequest)
+		http.Error(resp, "没有找到这个接口！", http.StatusBadRequest)
 		return
 	}
 	classImplValue := reflect.ValueOf(classImpl)
@@ -42,7 +41,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	// 查找方法
 	method := classImplValue.MethodByName(invocation.MethodName)
 	if !method.IsValid() {
-		http.Error(resp, "Method not found", http.StatusBadRequest)
+		http.Error(resp, "没有找到对应服务！", http.StatusBadRequest)
 		return
 	}
 
@@ -52,12 +51,12 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 		// 获取参数类型
 		paramType, ok := register.GetTypeByName(invocation.ParameterTypes[i])
 		if !ok {
-			fmt.Println("输入类型不支持！")
+			http.Error(resp, "输入类型不支持！", http.StatusInternalServerError)
 			return
 		}
 		inputIJSON, err := json.Marshal(param)
 		if err != nil {
-			fmt.Println("输入类型不支持！")
+			http.Error(resp, "输入类型不支持！", http.StatusInternalServerError)
 			return
 		}
 
@@ -65,7 +64,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 		ptr := inputIval.Addr().Interface()
 		err = json.Unmarshal(inputIJSON, ptr)
 		if err != nil {
-			fmt.Println("输入类型不支持！")
+			http.Error(resp, "输入类型不支持！", http.StatusInternalServerError)
 			return
 		}
 
@@ -76,7 +75,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	// 调用方法并检查返回值
 	results := method.Call(inputs)
 	if len(results) == 0 {
-		http.Error(resp, "Method call returned no results", http.StatusInternalServerError)
+		http.Error(resp, "这个方法没有返回值！", http.StatusInternalServerError)
 		return
 	}
 
@@ -94,7 +93,8 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 		Values: returnValues,
 		Types:  returnTypes,
 	}
+	//响应报文写入数据
 	if err = json.NewEncoder(resp).Encode(result); err != nil {
-		http.Error(resp, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(resp, "响应结果序列化失败！", http.StatusInternalServerError)
 	}
 }

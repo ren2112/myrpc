@@ -32,7 +32,7 @@ func (s *HTTPRegisterServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		s.handleHeartbeat(w, r)
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "不支持这种请求方式", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -76,7 +76,7 @@ func StartHTTPRegisterServer(addr string, timeout time.Duration) error {
 		return err
 	}
 
-	// 在服务器关闭后执行其他逻辑
+	// 服务器关闭
 	fmt.Println("服务器已关闭")
 
 	return nil
@@ -108,13 +108,13 @@ func RegisterServiceToHTTP(url common.URL, registerAddr string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(registerAddr+"/register", "application/json", bytes.NewReader(body))
+	resp, err := http.Post(registerAddr, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to register service, status code: %d", resp.StatusCode)
+		return fmt.Errorf("注册服务失败，状态码: %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -127,7 +127,7 @@ func QueryServicesFromHTTP(interfaceName, registerAddr string) ([]common.URL, er
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to query services, status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("服务发现调用失败，状态码: %d", resp.StatusCode)
 	}
 
 	var urls []common.URL
