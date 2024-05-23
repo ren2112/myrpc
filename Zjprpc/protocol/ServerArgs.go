@@ -21,8 +21,8 @@ func ParseServerArgs() (*common.ServerConfig, error) {
 	if config.Help {
 		//flag.PrintDefaults()
 		return nil, fmt.Errorf("\n1）-l，服务端监听的 ip 地址(不需要协议)，支持 IPv4 和 IPv6，可以为空，默认监听所有 ip 地址，即 0.0.0.0\n2）-p，服务端监听的端口号，不得为空" +
-			"\n3) -r，注册中心的ip地址，不可以为空\n4) -rp，注册中心的端口，不可以为空\n" +
-			"启动实例：go run <fileName>.go -l http://127.0.0.1 -p 8081 -r http://127.0.0.1 -rp 8082")
+			"\n3) -r，注册中心的ip地址，不可以为空，需要协议\n4) -rp，注册中心的端口，不可以为空\n" +
+			"启动实例：go run <fileName>.go -l 127.0.0.1 -p 8081 -r http://127.0.0.1 -rp 8082")
 	}
 
 	if config.Port == 0 {

@@ -2,16 +2,24 @@ package main
 
 import (
 	"fmt"
+	"myRpc/Zjprpc/common"
+	"myRpc/Zjprpc/protocol"
 	"myRpc/Zjprpc/proxy"
 )
 
 func main() {
-
+	var config *common.ClientConfig
+	var err error
+	config, err = protocol.ParseClientArgs()
+	if err != nil {
+		fmt.Println("提示：", err)
+		return
+	}
 	// 创建 RPC 代理
 	rpcProxy := proxy.NewRpcProxy()
 
 	// 进行 RPC 调用
-	result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"})
+	result, err := rpcProxy.Invoke("HelloService", "SayHello", []interface{}{"World"}, config)
 	if err != nil {
 		fmt.Println(err)
 		return
