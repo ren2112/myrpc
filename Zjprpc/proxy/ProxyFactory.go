@@ -18,8 +18,8 @@ type RpcProxy struct {
 	client *protocol.HttpClient
 }
 
-var mu sync.RWMutex
-var TypeRegistry map[string]reflect.Type
+var mu sync.RWMutex                      //本地数据类型注册表的读写锁
+var TypeRegistry map[string]reflect.Type //数据类型注册表
 
 // NewRpcProxy 创建一个新的 RpcProxy 实例
 func NewRpcProxy() *RpcProxy {
@@ -49,6 +49,7 @@ func RegisterType(name string, t reflect.Type) {
 
 // 服务发现
 func callServicecDiscovery(interfaceName string, registerAddr string) ([]common.URL, error) {
+	//使用注册中心暴露的服务发现方法获得url列表
 	urlList, err := register.QueryServicesFromHTTP(interfaceName, registerAddr)
 	if err != nil || len(urlList) == 0 {
 		return nil, fmt.Errorf("在接口 %s,没有可以用的服务， 报错: %v", interfaceName, err)
@@ -100,7 +101,7 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 	url := loadbalance.Random(urlList)
 
 	// 服务调用
-	resultStr, err := p.client.Send(url.HostName, url.Port, invocation)
+	var resultStr []byte
 	err = protocol.WithTimeout(func() error {
 		var err error
 		resultStr, err = callServiceSend(p.client, url.HostName, url.Port, invocation)
@@ -109,7 +110,7 @@ func (p *RpcProxy) Invoke(interfaceName, methodName string, params []interface{}
 	var result common.Result
 	err = json.Unmarshal(resultStr, &result)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("对响应结果反序列化结果失败！响应结果为：%s", string(resultStr)))
 	}
 
 	//将结果转换为对应类型

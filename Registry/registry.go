@@ -19,7 +19,7 @@ func main() {
 	}
 
 	fmt.Printf("注册中心于端口%d监听\n", config.Port)
-	if err := register.StartHTTPRegisterServer(fmt.Sprintf("%s:%d", config.IP, config.Port), 10*time.Second); err != nil {
+	if err := register.StartHTTPRegisterServer(fmt.Sprintf("%s:%d", config.IP, config.Port), 5*time.Second); err != nil {
 		log.Fatalf("Start HTTP register server failed: %v", err)
 	}
 }

@@ -9,7 +9,7 @@ import (
 func ParseRegistryArgs() (*common.RegistryConfig, error) {
 	config := &common.RegistryConfig{}
 
-	flag.StringVar(&config.IP, "i", "http://0.0.0.0", "注册中心 IP 地址")
+	flag.StringVar(&config.IP, "i", "0.0.0.0", "注册中心 IP 地址")
 	flag.IntVar(&config.Port, "p", 0, "注册中心端口")
 	flag.BoolVar(&config.Help, "h", false, "帮助参数")
 

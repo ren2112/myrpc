@@ -22,7 +22,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	}
 
 	//反序列化
-	err = json.Unmarshal([]byte(requestBody), &invocation)
+	err = json.Unmarshal(requestBody, &invocation)
 	if err != nil {
 		http.Error(resp, "反序列化传参失败!", http.StatusBadRequest)
 		return
@@ -31,7 +31,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	// 获取实现类
 	interfaceName := invocation.InterfaceName
 	localRegister := register.GetInstance()
-	classImpl := localRegister.Get(interfaceName, "1.0")
+	classImpl := localRegister.Get(interfaceName)
 	if classImpl == nil {
 		http.Error(resp, "没有找到这个接口！", http.StatusBadRequest)
 		return
@@ -48,7 +48,7 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	// 构造参数列表
 	inputs := make([]reflect.Value, len(invocation.Parameters))
 	for i, param := range invocation.Parameters {
-		// 获取参数类型
+		// 从类型注册表中获取参数类型
 		paramType, ok := register.GetTypeByName(invocation.ParameterTypes[i])
 		if !ok {
 			http.Error(resp, "输入类型不支持！", http.StatusInternalServerError)
@@ -73,6 +73,12 @@ func (h *HttpServerHandler) Handler(resp http.ResponseWriter, req *http.Request)
 	}
 
 	// 调用方法并检查返回值
+	defer func() {
+		if r := recover(); r != nil {
+			// 处理调用错误的情况
+			http.Error(resp, "调用函数失败，可能传参有误！！", http.StatusInternalServerError)
+		}
+	}()
 	results := method.Call(inputs)
 	if len(results) == 0 {
 		http.Error(resp, "这个方法没有返回值！", http.StatusInternalServerError)

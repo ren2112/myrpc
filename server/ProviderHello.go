@@ -26,7 +26,7 @@ func main() {
 	//新建本地注册
 	register.InitLocalRegister()
 	localRegister := register.GetInstance()
-	localRegister.Regist(interfaceName, "1.0", &Provider.HelloServiceImpl{})
+	localRegister.Regist(interfaceName, &Provider.HelloServiceImpl{})
 
 	//注册中心注册：
 	url := common.URL{interfaceName, config.IP, config.Port, time.Now()}
@@ -36,6 +36,6 @@ func main() {
 	}
 
 	//启动服务
-	httpServer := protocol.NewHttpServer(time.Second, fmt.Sprintf("%s:%d", config.ReIP, config.RePort), url)
+	httpServer := protocol.NewHttpServer(1*time.Second, fmt.Sprintf("%s:%d", config.ReIP, config.RePort), url)
 	httpServer.Start(url.HostName, url.Port)
 }

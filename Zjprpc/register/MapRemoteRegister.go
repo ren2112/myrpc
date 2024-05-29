@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"myRpc/Zjprpc/common"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
 
 // HTTPRegisterServer 使用HTTP作为服务注册中心
 type HTTPRegisterServer struct {
-	mu       sync.RWMutex
-	registry map[string][]common.URL
-	timeout  time.Duration
+	mu       sync.RWMutex            //接口url注册表的读写锁
+	registry map[string][]common.URL //记录接口名称对应的url数组的接口url表
+	timeout  time.Duration           //心跳超时时间
 }
 
 func NewHTTPRegisterServer() *HTTPRegisterServer {
@@ -37,13 +38,22 @@ func (s *HTTPRegisterServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HTTPRegisterServer) handleRegister(w http.ResponseWriter, r *http.Request) {
+	//获得请求的ip地址
+	ipPort := strings.Split(r.RemoteAddr, ":")
+	ip := ipPort[0]
+
+	//获得服务端发起注册的url结构体
 	var url common.URL
 	err := json.NewDecoder(r.Body).Decode(&url)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	//更新url的ip，因为有可能ip在服务端眼里是本机0.0.0.0，但是在注册中心却并不知道服务端的本机ip
+	url.HostName = ip
+
 	s.mu.Lock()
+	//注册
 	s.registry[url.InterfaceName] = append(s.registry[url.InterfaceName], url)
 	s.mu.Unlock()
 	w.WriteHeader(http.StatusOK)
@@ -104,10 +114,12 @@ func (s *HTTPRegisterServer) checkHeartBeat() {
 
 // 服务中心注册，给服务端用
 func RegisterServiceToHTTP(url common.URL, registerAddr string) error {
+	//序列化
 	body, err := json.Marshal(url)
 	if err != nil {
 		return err
 	}
+	//发送请求给注册中心
 	resp, err := http.Post(registerAddr, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -121,6 +133,7 @@ func RegisterServiceToHTTP(url common.URL, registerAddr string) error {
 
 // 服务中心发现,给客户端用
 func QueryServicesFromHTTP(interfaceName, registerAddr string) ([]common.URL, error) {
+	//发起http请求
 	resp, err := http.Get(registerAddr + "/query?interface=" + interfaceName)
 	if err != nil {
 		return nil, err
@@ -130,6 +143,7 @@ func QueryServicesFromHTTP(interfaceName, registerAddr string) ([]common.URL, er
 		return nil, fmt.Errorf("服务发现调用失败，状态码: %d", resp.StatusCode)
 	}
 
+	//对响应url列表反序列化
 	var urls []common.URL
 	err = json.NewDecoder(resp.Body).Decode(&urls)
 	if err != nil {
@@ -140,12 +154,18 @@ func QueryServicesFromHTTP(interfaceName, registerAddr string) ([]common.URL, er
 
 // 处理心跳请求逻辑
 func (s *HTTPRegisterServer) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
+	//获得真实ip地址
+	ipPort := strings.Split(r.RemoteAddr, ":")
+	ip := ipPort[0]
+
 	var heartbeatData common.HeartBeatData
 	err := json.NewDecoder(r.Body).Decode(&heartbeatData)
 	if err != nil {
 		http.Error(w, "无法反序列化心跳数据", http.StatusBadRequest)
 		return
 	}
+	heartbeatData.URL.HostName = ip
+
 	//	更新服务中心的接口名对应url的时间戳
 	s.mu.Lock()
 	urls, ok := s.registry[heartbeatData.URL.InterfaceName]
@@ -154,7 +174,6 @@ func (s *HTTPRegisterServer) handleHeartbeat(w http.ResponseWriter, r *http.Requ
 			if urls[i].HostName == heartbeatData.URL.HostName &&
 				urls[i].Port == heartbeatData.URL.Port {
 				//更新时间
-				//fmt.Println(heartbeatData.HeartbeatTime)
 				urls[i].LastHeartbeat = heartbeatData.HeartbeatTime
 				break
 			}

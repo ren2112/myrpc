@@ -22,13 +22,11 @@ func main() {
 	}
 
 	//获取接口名字1
-	interfaceName := reflect.TypeOf((*Provider_Common.SortService)(nil)).Elem().Name()
+	interfaceName := reflect.TypeOf((*Provider_Common.TestService)(nil)).Elem().Name()
 	//新建本地注册
 	register.InitLocalRegister()
 	localRegister := register.GetInstance()
-	localRegister.Regist(interfaceName, &Provider.SortServiceImpl{})
-	//注册结构体
-	register.RegisterType(reflect.TypeOf((*[]int)(nil)).Elem().String(), reflect.TypeOf([]int{}))
+	localRegister.Regist(interfaceName, &Provider.TestServiceImpl{})
 
 	//注册中心注册：
 	url := common.URL{interfaceName, config.IP, config.Port, time.Now()}
@@ -38,6 +36,6 @@ func main() {
 	}
 
 	//启动服务
-	httpServer := protocol.NewHttpServer(1*time.Second, fmt.Sprintf("%s:%d", config.ReIP, config.RePort), url)
+	httpServer := protocol.NewHttpServer(time.Second, fmt.Sprintf("%s:%d", config.ReIP, config.RePort), url)
 	httpServer.Start(url.HostName, url.Port)
 }

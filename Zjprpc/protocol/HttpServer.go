@@ -31,13 +31,13 @@ func (server *HttpServer) Start(host string, port int) {
 	address := fmt.Sprintf("%s:%d", host, port)
 	fmt.Printf("Starting server at %s\n", address)
 
-	//创建服务器
+	//创建http服务器
 	server.server = &http.Server{
 		Addr:    address,
 		Handler: nil,
 	}
 
-	//添加中间键
+	//添加handler
 	http.HandleFunc("/", new(DispatcherServlet).service)
 
 	//发送心跳
@@ -52,6 +52,7 @@ func (server *HttpServer) Start(host string, port int) {
 		}
 	}()
 
+	//开启监听
 	if err := server.server.ListenAndServe(); err != nil {
 		fmt.Printf("服务被关闭！: %s\n", err)
 	}
@@ -80,7 +81,6 @@ func (server *HttpServer) startHeartbeat() {
 }
 
 func SendHeartbeat(url common.URL, registerAddr string) error {
-	heartbeatUrl := registerAddr
 	heartbeatData := common.HeartBeatData{
 		url, time.Now(),
 	}
@@ -92,7 +92,7 @@ func SendHeartbeat(url common.URL, registerAddr string) error {
 	}
 
 	//发送put请求
-	req, err := http.NewRequest("PUT", heartbeatUrl, bytes.NewReader(requestBody))
+	req, err := http.NewRequest("PUT", registerAddr, bytes.NewReader(requestBody))
 	if err != nil {
 		return errors.New("设置心跳请求失败！")
 	}
