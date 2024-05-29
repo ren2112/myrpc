@@ -10,7 +10,7 @@
   - Provider-Common（服务端的接口定义）
   - Registry（注册中心 main 包代码）
   - server（服务端 main 包代码）
-  - Zjrpc（rpc 相关自定义协议）
+  - Zjprpc（rpc 相关自定义协议）
     - common（定义通用函数和结构体）
     - loadbalance（负载均衡）
     - protocol（对服务端客户端的 rpc 进行实现）
